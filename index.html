@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tenpura Everything</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  :root{
+    --paper:#e7e0d1;
+    --paper-2:#f4efe3;
+    --paper-3:#fbf7ee;
+    --ink:#1a1811;
+    --ink-2:#4c4535;
+    --ink-3:#847a64;
+    --rule:rgba(26,24,17,.26);
+    --amber:#a5651a;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --mono:"Courier New",Courier,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    line-height:1.5;
+    min-height:100vh;
+    padding-bottom:80px;
+  }
+  /* paper fibre + grain */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      repeating-linear-gradient(90deg,rgba(120,104,74,.045) 0 1px,transparent 1px 3px),
+      repeating-linear-gradient(0deg,rgba(120,104,74,.035) 0 1px,transparent 1px 4px);
+  }
+  .grain{
+    position:fixed;inset:0;pointer-events:none;z-index:900;opacity:.42;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  #app{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 22px}
+
+  /* ---------- header ---------- */
+  header{padding:46px 0 18px;text-align:center}
+  h1{
+    font-family:var(--serif);
+    font-size:clamp(30px,6.2vw,64px);
+    font-weight:600;
+    letter-spacing:.12em;
+    line-height:.98;
+    text-transform:uppercase;
+  }
+  .wordmark-rule{
+    display:flex;align-items:center;justify-content:center;margin:20px auto 0;max-width:300px;
+  }
+  .wordmark-rule i{flex:1;height:1px;background:var(--ink);opacity:.55}
+
+  /* ---------- counter ---------- */
+  main#counter{
+    margin:34px 0 0;
+    background:var(--paper-2);
+    border:1px solid var(--ink);
+    box-shadow:6px 6px 0 -1px rgba(26,24,17,.13);
+    padding:0;
+    position:relative;
+  }
+  .counter-head{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:10px 16px;border-bottom:1px solid var(--rule);
+    font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);
+  }
+  .counter-body{padding:clamp(20px,4vw,44px)}
+  .hide{display:none !important}
+
+  /* drop zone */
+  #dropZone{
+    border:1.5px dashed var(--ink);
+    padding:clamp(36px,7vw,74px) 24px;
+    text-align:center;cursor:pointer;position:relative;
+    background:
+      radial-gradient(circle at 50% 40%,rgba(255,255,255,.5),transparent 70%),
+      var(--paper-3);
+    transition:background .15s;
+  }
+  #dropZone:hover,#dropZone.dragover{background:#fffdf6}
+  #dropZone.dragover{border-style:solid;border-color:var(--amber)}
+  .dz-title{font-size:clamp(17px,2.4vw,22px);font-weight:600;letter-spacing:.02em}
+  .crop{position:absolute;width:14px;height:14px;border:1.5px solid var(--ink);opacity:.5}
+  .crop.tl{top:-1.5px;left:-1.5px;border-right:0;border-bottom:0}
+  .crop.tr{top:-1.5px;right:-1.5px;border-left:0;border-bottom:0}
+  .crop.bl{bottom:-1.5px;left:-1.5px;border-right:0;border-top:0}
+  .crop.br{bottom:-1.5px;right:-1.5px;border-left:0;border-top:0}
+
+  /* order panel */
+  #orderPanel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(18px,3vw,34px);align-items:center}
+  @media (max-width:720px){#orderPanel{grid-template-columns:1fr}}
+  .thumb{
+    border:1px solid var(--ink);background:#d9d1bf;padding:8px;
+    box-shadow:4px 4px 0 -1px rgba(26,24,17,.15);
+  }
+  .thumb img{display:block;width:100%;height:auto;filter:saturate(.92) contrast(.98)}
+  .thumb-cap{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin-top:8px;text-align:center}
+  label.field-label{
+    display:block;font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink-3);margin-bottom:9px;
+  }
+  #subjectInput{
+    width:100%;padding:13px 14px;background:transparent;color:var(--ink);
+    border:1px solid var(--ink);border-radius:0;
+    font-family:var(--mono);font-size:15px;letter-spacing:.04em;
+  }
+  #subjectInput::placeholder{color:var(--ink-3);opacity:.75}
+  #subjectInput:focus{outline:none;background:var(--paper-3);box-shadow:inset 0 0 0 1px var(--ink)}
+
+  /* buttons */
+  .btn{
+    font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+    padding:13px 20px;background:var(--paper-3);color:var(--ink);
+    border:1px solid var(--ink);border-radius:0;cursor:pointer;
+    box-shadow:3px 3px 0 -1px var(--ink);
+    transition:transform .07s ease,box-shadow .07s ease,background .12s;
+  }
+  .btn:hover{background:#fffdf7}
+  .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 0 var(--ink)}
+  .btn.solid{background:var(--ink);color:var(--paper-3);box-shadow:3px 3px 0 -1px rgba(26,24,17,.45)}
+  .btn.solid:hover{background:#2c281d}
+  .btn.solid:active{box-shadow:0 0 0 0 rgba(26,24,17,.45)}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:3px 3px 0 -1px rgba(26,24,17,.3)}
+
+  .samples{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;align-items:center}
+  .chip{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+    padding:7px 11px;background:transparent;border:1px solid var(--rule);color:var(--ink-2);cursor:pointer;
+  }
+  .chip:hover{border-color:var(--ink);color:var(--ink);background:var(--paper-3)}
+
+  /* stage */
+  #stage{text-align:center}
+  .canvas-wrap{display:inline-block;position:relative;line-height:0}
+  #stageCanvas{display:block;cursor:pointer;max-width:100%}
+  .status{
+    display:flex;justify-content:space-between;gap:16px;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--ink-3);margin-top:12px;padding-top:10px;border-top:1px solid var(--rule);
+  }
+  .status b{color:var(--amber);font-weight:700;letter-spacing:.22em}
+
+  /* receipt */
+  #receiptWrap{margin:30px auto 0;max-width:360px;position:relative}
+  #receipt{
+    background:var(--paper-3);
+    padding:26px 22px 30px;
+    font-family:var(--mono);font-size:11px;line-height:1.55;letter-spacing:.055em;
+    color:var(--ink);
+    position:relative;
+    box-shadow:2px 3px 0 -1px rgba(26,24,17,.18);
+    animation:receiptIn .45s ease both;
+  }
+  @keyframes receiptIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #receipt::before,#receipt::after{
+    content:'';position:absolute;left:0;right:0;height:7px;
+    background:radial-gradient(circle at 5px 4px,transparent 4px,var(--paper-3) 4.5px) repeat-x;
+    background-size:10px 7px;
+  }
+  #receipt::before{top:-7px;transform:scaleY(-1)}
+  #receipt::after{bottom:-7px}
+  .r-head{display:flex;justify-content:space-between;gap:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:10.5px}
+  .r-rule{height:1px;background:var(--ink);opacity:.55;margin:11px 0}
+  .r-rule.dashed{height:0;border-top:1px dashed var(--ink);opacity:.4;background:none;margin:10px 0}
+  .r-row{display:grid;grid-template-columns:82px 1fr;gap:10px;text-transform:uppercase;word-break:break-word}
+  .r-row dt{color:var(--ink-3)}
+  .r-row dd{margin:0}
+  .r-total{display:flex;justify-content:flex-end;font-size:15px;margin-top:14px;letter-spacing:.1em}
+  .stamp{
+    position:absolute;right:-14px;top:-18px;transform:rotate(-7deg);
+    border:2px solid var(--amber);color:var(--amber);border-radius:2px;
+    padding:5px 9px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.22em;
+    text-transform:uppercase;opacity:.82;background:rgba(251,247,238,.6);
+  }
+
+  .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+
+  /* wall */
+  #wall{margin-top:64px}
+  .wall-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));
+    gap:14px;margin-top:18px;
+  }
+  .wall-item{background:var(--paper-3);border:1px solid var(--ink);padding:6px 6px 0;box-shadow:2px 2px 0 -1px rgba(26,24,17,.14)}
+  .wall-item img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;background:#d9d1bf}
+
+
+  .notice{
+    border:1px solid var(--ink);background:var(--paper-3);padding:18px 20px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.06em;margin-top:20px;
+  }
+  .spin{display:inline-block;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div id="app">
+  <header>
+    <h1>Tenpura<br>Everything</h1>
+    <div class="wordmark-rule"><i></i></div>
+  </header>
+
+  <main id="counter">
+    <div class="counter-head">
+      <span id="orderTag">Order № 0001</span>
+    </div>
+    <div class="counter-body">
+
+      <!-- 1. intake -->
+      <section id="dropZone">
+        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+        <div class="dz-title">Place subject here</div>
+      </section>
+
+      <!-- 2. order -->
+      <section id="orderPanel" class="hide">
+        <div class="thumb">
+          <img id="thumbImg" alt="">
+          <div class="thumb-cap" id="thumbCap"></div>
+        </div>
+        <div>
+          <label class="field-label" for="subjectInput">Subject</label>
+          <input id="subjectInput" type="text" autocomplete="off" spellcheck="false" placeholder="Unnamed">
+          <div class="actions" style="justify-content:flex-start;margin-top:22px">
+            <button class="btn solid" id="cookBtn">Cook</button>
+          </div>
+          <div class="samples">
+            
+            <button class="chip" data-sample="building">Building</button>
+            <button class="chip" data-sample="landscape">Landscape</button>
+            <button class="chip" data-sample="food">Food</button>
+            <button class="chip" data-sample="text">Document</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. stage -->
+      <section id="stage" class="hide">
+        <div class="canvas-wrap"><canvas id="stageCanvas"></canvas></div>
+        <div class="status">
+          <span><b id="phaseName">Batter</b></span>
+          <span id="timerText">0.0 s / 6.8 s</span>
+        </div>
+      </section>
+
+      <!-- 4. receipt -->
+      <div id="receiptWrap" class="hide">
+        <div class="stamp" id="stamp">Served Hot</div>
+        <article id="receipt"></article>
+      </div>
+
+      <!-- 5. actions -->
+      <div class="actions hide" id="actions">
+        <button class="btn" id="savePlateBtn">Save plate</button>
+        <button class="btn" id="saveCardBtn">Save card</button>
+        <button class="btn" id="newOrderBtn">New order</button>
+      </div>
+
+      <div id="notice" class="notice hide"></div>
+    </div>
+  </main>
+
+  <section id="wall" class="hide">
+    <div class="wall-grid" id="wallGrid"></div>
+  </section>
+
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<script>
+/* ==========================================================================
+   0. Small maths
+   ========================================================================== */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const pad4 = n => String(n).padStart(4, '0');
+const TAU = Math.PI * 2;
+
+/* deterministic PRNG (mulberry32) */
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ==========================================================================
+   1. Value noise (fast, deterministic, no p5 dependency)
+   ========================================================================== */
+const PERM = new Uint8Array(512);
+(function seedPerm() {
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  const r = rng(20261111);
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    const t = p[i]; p[i] = p[j]; p[j] = t;
+  }
+  for (let i = 0; i < 512; i++) PERM[i] = p[i & 255];
+})();
+
+const fadeC = t => t * t * t * (t * (t * 6 - 15) + 10);
+
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const X = xi & 255, Y = yi & 255;
+  const u = fadeC(xf), v = fadeC(yf);
+  const A = PERM[X] + Y, B = PERM[X + 1] + Y;
+  const n00 = PERM[A & 255], n10 = PERM[B & 255];
+  const n01 = PERM[(A + 1) & 255], n11 = PERM[(B + 1) & 255];
+  const x1 = n00 + (n10 - n00) * u;
+  const x2 = n01 + (n11 - n01) * u;
+  return (x1 + (x2 - x1) * v) * 0.00392156862745; // /255
+}
+
+function fbm(x, y, oct) {
+  let sum = 0, amp = 0.5, f = 1, norm = 0;
+  for (let i = 0; i < oct; i++) { sum += vnoise(x * f, y * f) * amp; norm += amp; amp *= 0.5; f *= 2; }
+  return sum / norm;
+}
+function ridged(x, y) {
+  const n = vnoise(x, y);
+  return 1 - Math.abs(n - 0.5) * 2;
+}
+
+/* ==========================================================================
+   2. Colour ramp — shadow → mid → highlight
+   ========================================================================== */
+const RAMP = [
+  [ 62,  31,   8],
+  [124,  64,  13],
+  [183, 115,  25],
+  [226, 171,  72],
+  [250, 231, 183]
+];
+function rampAt(t) {
+  t = clamp(t, 0, 1) * (RAMP.length - 1);
+  const i = Math.min(RAMP.length - 2, Math.floor(t));
+  const f = t - i, a = RAMP[i], b = RAMP[i + 1];
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+}
+
+/* ==========================================================================
+   3. The batter transform
+   Returns a canvas containing only the piece, on transparency.
+   ========================================================================== */
+function buildPiece(src, longSide) {
+  const sw = src.naturalWidth || src.width;
+  const sh = src.naturalHeight || src.height;
+  const k = longSide / Math.max(sw, sh);
+  const w = Math.max(2, Math.round(sw * k));
+  const h = Math.max(2, Math.round(sh * k));
+
+  /* --- source pixels, upscaled to working size --- */
+  const sc = document.createElement('canvas');
+  sc.width = w; sc.height = h;
+  const sctx = sc.getContext('2d', { willReadFrequently: true });
+  sctx.imageSmoothingEnabled = true;
+  sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(src, 0, 0, w, h);
+  const sd = sctx.getImageData(0, 0, w, h).data;
+
+  /* --- piece canvas, with room for the ragged batter rim --- */
+  const pad = Math.round(clamp(longSide * 0.036, 14, 58));
+  const W = w + pad * 2;
+  const H = h + pad * 2;
+
+  const out = document.createElement('canvas');
+  out.width = W; out.height = H;
+  const octx = out.getContext('2d');
+  const imgData = octx.createImageData(W, H);
+  const od = imgData.data;
+
+  const cx = W * 0.5, cy = H * 0.5;
+  const hw = w * 0.5, hh = h * 0.5;
+  const corner = Math.min(hw, hh) * 0.26;
+
+  /* --- silhouette: follow the subject's own alpha when it has one --- */
+  const MASK = new Uint8Array(W * H);
+  let opaqueCount = 0;
+  for (let y = 0; y < H; y++) {
+    const sy2 = y - pad;
+    for (let x = 0; x < W; x++) {
+      const sx2 = x - pad;
+      let inside = 0;
+      if (sx2 >= 0 && sx2 < w && sy2 >= 0 && sy2 < h) {
+        inside = sd[(sy2 * w + sx2) * 4 + 3] >= 140 ? 1 : 0;
+      }
+      MASK[y * W + x] = inside;
+      opaqueCount += inside;
+    }
+  }
+  const opaqueFrac = opaqueCount / (W * H);
+  const useSilhouette = opaqueFrac > 0.02 && opaqueFrac < 0.97;
+
+  /* distance from the silhouette boundary — chamfer 1 / √2, two sweeps */
+  const DT = new Float32Array(W * H);
+  if (useSilhouette) {
+    const BIG = 1e6;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x, m = MASK[i];
+        let b = 0;
+        if (x > 0 && MASK[i - 1] !== m) b = 1;
+        else if (x < W - 1 && MASK[i + 1] !== m) b = 1;
+        else if (y > 0 && MASK[i - W] !== m) b = 1;
+        else if (y < H - 1 && MASK[i + W] !== m) b = 1;
+        DT[i] = b ? 0 : BIG;
+      }
+    }
+    const D1 = 1, D2 = 1.41421356237;
+    for (let y = 1; y < H - 1; y++) {
+      const row = y * W;
+      for (let x = 1; x < W - 1; x++) {
+        const i = row + x;
+        if (DT[i] === 0) continue;
+        const v = Math.min(DT[i], DT[i - 1] + D1, DT[i - W] + D1, DT[i - W - 1] + D2, DT[i - W + 1] + D2);
+        DT[i] = v;
+      }
+    }
+    for (let y = H - 2; y > 0; y--) {
+      const row = y * W;
+      for (let x = W - 2; x > 0; x--) {
+        const i = row + x;
+        if (DT[i] === 0) continue;
+        const v = Math.min(DT[i], DT[i + 1] + D1, DT[i + W] + D1, DT[i + W + 1] + D2, DT[i + W - 1] + D2);
+        DT[i] = v;
+      }
+    }
+  }
+
+  /* signed distance at any padded-canvas point, negative inside the batter */
+  function sdfAt(x, y) {
+    const xi = x | 0, yi = y | 0;
+    if (xi < 0 || yi < 0 || xi >= W || yi >= H) return 999;
+    const i = yi * W + xi;
+    if (useSilhouette) return MASK[i] ? -DT[i] : DT[i];
+    const dx2 = x - cx, dy2 = y - cy;
+    const qx2 = Math.abs(dx2) - (hw - corner), qy2 = Math.abs(dy2) - (hh - corner);
+    const ax2 = qx2 > 0 ? qx2 : 0, ay2 = qy2 > 0 ? qy2 : 0;
+    return Math.sqrt(ax2 * ax2 + ay2 * ay2) + Math.min(Math.max(qx2, qy2), 0) - corner;
+  }
+
+  /* --- crust height field, computed once --- */
+  const HGT = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const fy = y * 0.020, fyR = y * 0.080, fyP = y * 0.185;
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      HGT[i] =
+        fbm(x * 0.020, fy, 3) * 0.52 +
+        ridged(x * 0.080, fyR) * 0.33 +
+        vnoise(x * 0.185, fyP) * 0.15;
+    }
+  }
+
+  const SHADE = 5.2;
+
+  for (let y = 0; y < H; y++) {
+    const dy = y - cy;
+    for (let x = 0; x < W; x++) {
+      const dx = x - cx;
+
+      /* signed distance to the batter boundary */
+      const d = sdfAt(x, y);
+
+      /* uneven batter overhang */
+      const rim = 8
+        + 15 * fbm(x * 0.0052, y * 0.0052, 2)
+        + 6 * vnoise(x * 0.031, y * 0.031);
+
+      const cov = (rim - d) / 1.9;          // antialiased coverage
+      if (cov <= 0) continue;
+      const alpha = cov > 1 ? 1 : cov;
+
+      /* --- map into source, with batter warp --- */
+      let u = (dx / hw) * 0.5 + 0.5;
+      let v = (dy / hh) * 0.5 + 0.5;
+
+      const wx = (fbm(x * 0.0105, y * 0.0105, 2) - 0.5) * 0.030
+               + (vnoise(x * 0.052, y * 0.052) - 0.5) * 0.013;
+      const wy = (fbm(x * 0.0105 + 37.5, y * 0.0105 + 11.5, 2) - 0.5) * 0.030
+               + (vnoise(x * 0.052 + 19, y * 0.052 + 7) - 0.5) * 0.013;
+      u = clamp(u + wx, 0, 0.9999);
+      v = clamp(v + wy, 0, 0.9999);
+
+      /* bilinear sample */
+      const fx = u * w - 0.5, fy = v * h - 0.5;
+      const x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const tx = fx - x0, ty = fy - y0;
+      const x1 = x0 + 1 < w ? x0 + 1 : w - 1;
+      const y1 = y0 + 1 < h ? y0 + 1 : h - 1;
+      const cx0 = x0 < 0 ? 0 : x0, cy0 = y0 < 0 ? 0 : y0;
+
+      const i00 = (cy0 * w + cx0) * 4;
+      const i10 = (cy0 * w + x1) * 4;
+      const i01 = (y1 * w + cx0) * 4;
+      const i11 = (y1 * w + x1) * 4;
+      const w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty);
+      const w01 = (1 - tx) * ty, w11 = tx * ty;
+
+      const sr0 = sd[i00] * w00 + sd[i10] * w10 + sd[i01] * w01 + sd[i11] * w11;
+      const sg0 = sd[i00 + 1] * w00 + sd[i10 + 1] * w10 + sd[i01 + 1] * w01 + sd[i11 + 1] * w11;
+      const sb0 = sd[i00 + 2] * w00 + sd[i10 + 2] * w10 + sd[i01 + 2] * w01 + sd[i11 + 2] * w11;
+      const sa0 = sd[i00 + 3] * w00 + sd[i10 + 3] * w10 + sd[i01 + 3] * w01 + sd[i11 + 3] * w11;
+
+      /* transparent regions inside the batter read as bare batter, not black */
+      const aK = clamp(sa0 / 200, 0, 1);
+      const baseR = 214, baseG = 158, baseB = 74;
+      const sr = sr0 * aK + baseR * (1 - aK);
+      const sg = sg0 * aK + baseG * (1 - aK);
+      const sb = sb0 * aK + baseB * (1 - aK);
+
+      /* --- gold grade, luminance preserving --- */
+      const lum = (sr * 0.299 + sg * 0.587 + sb * 0.114) / 255;
+      const g = rampAt(Math.pow(lum, 0.84));
+
+      /* keep a trace of the original chroma so shapes still read */
+      const cr = sr - lum * 255, cg = sg - lum * 255, cb = sb - lum * 255;
+      let r = g[0] + cr * 0.20;
+      let gg = g[1] + cg * 0.20;
+      let b  = g[2] + cb * 0.20;
+
+      /* --- crust relief: light from the upper left --- */
+      const i = y * W + x;
+      const gx = HGT[i + (x < W - 1 ? 1 : 0)] - HGT[i - (x > 0 ? 1 : 0)];
+      const gy = HGT[i + (y < H - 1 ? W : 0)] - HGT[i - (y > 0 ? W : 0)];
+      let shade = 1 - (gx * 0.62 + gy * 0.78) * SHADE;
+      shade = clamp(shade, 0.50, 1.62);
+      r *= shade; gg *= shade; b *= shade;
+
+      /* --- pores: small dark pits --- */
+      const pore = vnoise(x * 0.150, y * 0.146);
+      if (pore > 0.775) {
+        const kp = Math.min(1, (pore - 0.775) / 0.225);
+        r *= 1 - 0.44 * kp; gg *= 1 - 0.38 * kp; b *= 1 - 0.35 * kp;
+      }
+
+      /* --- blister rims catching light --- */
+      const br = ridged((x + 310) * 0.058, (y + 120) * 0.058);
+      if (br > 0.87) {
+        const kb = smoothstep(0.87, 1.0, br);
+        r += 52 * kb; gg += 43 * kb; b += 22 * kb;
+      }
+
+      /* --- dry flour, sparse and grainy --- */
+      const fl = fbm((x + 90) * 0.024, (y + 40) * 0.024, 2);
+      if (fl > 0.695) {
+        const speck = vnoise(x * 0.40, y * 0.40);
+        const kf = smoothstep(0.695, 0.865, fl) * (0.35 + 0.65 * speck);
+        r  += (243 - r)  * kf * 0.66;
+        gg += (232 - gg) * kf * 0.66;
+        b  += (205 - b)  * kf * 0.66;
+      }
+
+      /* --- broad uneven gloss --- */
+      const gl = smoothstep(0.57, 0.92, fbm((x + 5) * 0.0085, (y + 61) * 0.0085, 2));
+      r += 24 * gl; gg += 19 * gl; b += 8 * gl;
+
+      /* --- oil speculars, clustered toward the rim --- */
+      const sp = vnoise(x * 0.300, y * 0.268);
+      if (sp > 0.842) {
+        const edgeBoost = 1 + 1.8 * smoothstep(0, 26, -d);
+        const ks = Math.min(1, ((sp - 0.842) / 0.158) * edgeBoost * 0.95);
+        r  += (255 - r)  * ks;
+        gg += (251 - gg) * ks;
+        b  += (233 - b)  * ks;
+      }
+
+      const oi = i * 4;
+      od[oi] = r < 0 ? 0 : r > 255 ? 255 : r;
+      od[oi + 1] = gg < 0 ? 0 : gg > 255 ? 255 : gg;
+      od[oi + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+      od[oi + 3] = alpha * 255;
+    }
+  }
+
+  octx.putImageData(imgData, 0, 0);
+
+  /* --- bubbles & tenkasu, clipped to the batter --- */
+  octx.save();
+  octx.globalCompositeOperation = 'source-atop';
+  const rand = rng(7717);
+
+  /* bubbles: denser toward the rim, following the batter silhouette */
+  const nB = Math.round(clamp(W * H / 2600, 90, 620));
+  for (let n = 0; n < nB; n++) {
+    const bx = rand() * W, by = rand() * H;
+    const dd = sdfAt(bx, by);
+    if (dd > 0) continue;
+    if (rand() > 0.35 + 0.65 * smoothstep(-h * 0.55, 0, dd)) continue;
+    const rad = 0.7 + rand() * 2.6;
+    const light = rand() > 0.45;
+    octx.beginPath();
+    octx.arc(bx, by, rad, 0, TAU);
+    octx.fillStyle = light ? 'rgba(255,238,198,0.34)' : 'rgba(78,38,8,0.30)';
+    octx.fill();
+  }
+
+  /* tenkasu: small pale fried flakes around the rim */
+  const nT = Math.round(clamp(W * H / 26000, 26, 90));
+  for (let n = 0; n < nT; n++) {
+    const ang = rand() * TAU;
+    const rr = 0.42 + rand() * 0.5;
+    const fx2 = cx + Math.cos(ang) * hw * rr * 1.02;
+    const fy2 = cy + Math.sin(ang) * hh * rr * 1.02;
+    const sz = 1.4 + rand() * 3.4;
+    octx.beginPath();
+    const verts = 5 + Math.floor(rand() * 3);
+    for (let vv = 0; vv < verts; vv++) {
+      const a2 = (vv / verts) * TAU;
+      const r2 = sz * (0.62 + rand() * 0.5);
+      const px = fx2 + Math.cos(a2) * r2;
+      const py = fy2 + Math.sin(a2) * r2;
+      vv ? octx.lineTo(px, py) : octx.moveTo(px, py);
+    }
+    octx.closePath();
+    octx.fillStyle = 'rgba(246,231,197,' + (0.42 + rand() * 0.35) + ')';
+    octx.fill();
+  }
+  octx.restore();
+
+  return out;
+}
+
+/* ==========================================================================
+   4. Paper plate: ground + contact shadow + piece
+   ========================================================================== */
+const PAPER = '#efe9db';
+
+function drawGround(ctx, w, h) {
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, w, h);
+  /* faint fibre */
+  const rand = rng(4242);
+  ctx.globalAlpha = 0.05;
+  ctx.fillStyle = '#7a6a4c';
+  const n = Math.round(w * h / 900);
+  for (let i = 0; i < n; i++) {
+    ctx.fillRect(rand() * w, rand() * h, 1 + rand(), 1);
+  }
+  ctx.globalAlpha = 1;
+  /* warm vignette */
+  const vg = ctx.createRadialGradient(w * 0.5, h * 0.42, Math.min(w, h) * 0.18, w * 0.5, h * 0.5, Math.max(w, h) * 0.78);
+  vg.addColorStop(0, 'rgba(255,252,244,0.35)');
+  vg.addColorStop(1, 'rgba(120,96,54,0.16)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawShadow(ctx, x, y, w, h) {
+  const cxp = x + w / 2;
+  const cyp = y + h * 0.98;
+  const rx = w * 0.52, ry = Math.max(10, h * 0.075);
+  const gr = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, Math.max(rx, ry));
+  gr.addColorStop(0, 'rgba(48,34,14,0.38)');
+  gr.addColorStop(0.55, 'rgba(48,34,14,0.16)');
+  gr.addColorStop(1, 'rgba(48,34,14,0)');
+  ctx.save();
+  ctx.translate(cxp, cyp);
+  ctx.scale(1, ry / rx);
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, TAU);
+  ctx.fillStyle = gr;
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ==========================================================================
+   5. App state
+   ========================================================================== */
+const state = {
+  file: null,
+  srcImage: null,
+  subject: '',
+  dims: { w: 0, h: 0 },
+  bytes: 0,
+  order: 1,
+  history: [],
+  piece: null,       // work-resolution piece canvas
+  batterLevels: [],  // silhouettes eroded from the rim inward
+  plateW: 0,
+  plateH: 0,
+  drawX: 0, drawY: 0,
+  drawW: 0, drawH: 0,
+  cooking: false,
+  t0: 0,
+  done: false,
+  oilBubbles: []
+};
+
+/* ---- cook timeline (ms) ----
+   batter floods · piece drops into the oil · it fries · it lifts and drains */
+const T_FLOOD = 1700;
+const T_DROP  = 2450;
+const T_FRY   = 5350;
+const COOK_MS = 6800;
+
+
+/* ==========================================================================
+   6. Canvas plumbing
+   ========================================================================== */
+let stageCanvas, stageCtx, DPR = 1, p5inst = null;
+
+function setupStageCtx() {
+  const box = stageBox();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  const cw = Math.round(box.w), ch = Math.round(box.h);
+  stageCanvas.width = Math.round(cw * DPR);
+  stageCanvas.height = Math.round(ch * DPR);
+  stageCanvas.style.width = cw + 'px';
+  stageCanvas.style.height = ch + 'px';
+  stageCtx = stageCanvas.getContext('2d');
+  state.plateW = cw;
+  state.plateH = ch;
+}
+
+function stageBox() {
+  const avail = document.getElementById('counter').clientWidth - 2 * 34;
+  const w = clamp(avail, 260, 780);
+  const h = Math.round(w * 0.74);
+  return { w, h };
+}
+
+function layoutPiece() {
+  const piece = state.piece;
+  if (!piece) return;
+  const ar = piece.width / piece.height;
+  const maxW = state.plateW * 0.86;
+  const maxH = state.plateH * 0.86;
+  let dw = maxW, dh = dw / ar;
+  if (dh > maxH) { dh = maxH; dw = dh * ar; }
+  state.drawW = dw;
+  state.drawH = dh;
+  state.drawX = (state.plateW - dw) / 2;
+  state.drawY = (state.plateH - dh) / 2 - state.plateH * 0.015;
+}
+
+/* rounded-rect path in canvas 2D */
+function roundRectPath(ctx, x, y, w, h, r) {
+  r = Math.min(r, Math.min(w, h) / 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+/* ==========================================================================
+   6b. Batter levels — the piece eroded from its own outline, rim → centre
+   ========================================================================== */
+const LEVELS = 16;
+
+function buildBatterLevels(piece) {
+  const target = 240;
+  const s = target / Math.max(piece.width, piece.height);
+  const w = Math.max(8, Math.round(piece.width * s));
+  const h = Math.max(8, Math.round(piece.height * s));
+
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(piece, 0, 0, w, h);
+  const px = g.getImageData(0, 0, w, h).data;
+
+  /* distance from the alpha boundary */
+  const BIG = 1e6;
+  const DT = new Float32Array(w * h);
+  let maxDT = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (px[i * 4 + 3] < 100) { DT[i] = 0; continue; }
+      let b = 0;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) b = 1;
+      else if (px[((y) * w + x - 1) * 4 + 3] < 100) b = 1;
+      else if (px[((y) * w + x + 1) * 4 + 3] < 100) b = 1;
+      else if (px[((y - 1) * w + x) * 4 + 3] < 100) b = 1;
+      else if (px[((y + 1) * w + x) * 4 + 3] < 100) b = 1;
+      DT[i] = b ? 0 : BIG;
+    }
+  }
+  const D1 = 1, D2 = 1.41421356237;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (DT[i] === 0) continue;
+      DT[i] = Math.min(DT[i], DT[i - 1] + D1, DT[i - w] + D1, DT[i - w - 1] + D2, DT[i - w + 1] + D2);
+    }
+  }
+  for (let y = h - 2; y > 0; y--) {
+    for (let x = w - 2; x > 0; x--) {
+      const i = y * w + x;
+      if (DT[i] === 0) continue;
+      DT[i] = Math.min(DT[i], DT[i + 1] + D1, DT[i + w] + D1, DT[i + w + 1] + D2, DT[i + w - 1] + D2);
+    }
+  }
+  for (let i = 0; i < DT.length; i++) if (DT[i] < BIG && DT[i] > maxDT) maxDT = DT[i];
+  if (maxDT < 1) maxDT = 1;
+
+  /* one mask per level: thin rim band first, full silhouette last */
+  const out = [];
+  for (let k = 0; k < LEVELS; k++) {
+    const thr = maxDT * (k / (LEVELS - 1));
+    const mc = document.createElement('canvas');
+    mc.width = w; mc.height = h;
+    const mg = mc.getContext('2d');
+    const im = mg.createImageData(w, h);
+    const md = im.data;
+    for (let i = 0; i < DT.length; i++) {
+      const a = px[i * 4 + 3];
+      if (a < 100) continue;
+      const edge = clamp((thr - DT[i]) / 1.4 + 1, 0, 1);
+      const v = edge * (a / 255);
+      md[i * 4] = 255; md[i * 4 + 1] = 255; md[i * 4 + 2] = 255;
+      md[i * 4 + 3] = v * 255;
+    }
+    mg.putImageData(im, 0, 0);
+    out.push({ canvas: mc, t: k / (LEVELS - 1) });
+  }
+  return out;
+}
+
+/* scratch compositing buffer, reused every frame */
+let scratch = null, scratchCtx = null;
+
+function drawMaskedPiece(ctx, level, x, y, w, h, alpha) {
+  const sw = Math.max(2, Math.round(w * DPR));
+  const sh = Math.max(2, Math.round(h * DPR));
+  if (!scratch) { scratch = document.createElement('canvas'); scratchCtx = scratch.getContext('2d'); }
+  if (scratch.width !== sw || scratch.height !== sh) { scratch.width = sw; scratch.height = sh; }
+
+  scratchCtx.setTransform(1, 0, 0, 1, 0, 0);
+  scratchCtx.globalCompositeOperation = 'source-over';
+  scratchCtx.clearRect(0, 0, sw, sh);
+  scratchCtx.imageSmoothingEnabled = true;
+  scratchCtx.imageSmoothingQuality = 'high';
+  scratchCtx.drawImage(state.piece, 0, 0, sw, sh);
+
+  if (level) {
+    scratchCtx.globalCompositeOperation = 'destination-in';
+    scratchCtx.drawImage(level.canvas, 0, 0, sw, sh);
+    scratchCtx.globalCompositeOperation = 'source-over';
+  }
+
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(scratch, x, y, w, h);
+  ctx.globalAlpha = 1;
+}
+
+/* ==========================================================================
+   7. Cook animation
+   ========================================================================== */
+function renderCook(ms) {
+  const ctx = stageCtx;
+  const t = clamp(ms / COOK_MS, 0, 1);
+  const W = state.plateW, H = state.plateH;
+  const px = state.drawX, py = state.drawY, pw = state.drawW, ph = state.drawH;
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  drawGround(ctx, W, H);
+  drawShadow(ctx, px, py, pw, ph);
+
+  /* ---- phase boundaries ---- */
+  const P1 = T_FLOOD;   // batter flood
+  const P2 = T_DROP;    // piece meets the oil
+  const P3 = T_FRY;     // fry ends, lift begins
+
+  if (ms < P1) {
+    /* ---------- 1. batter floods inward from the subject's own outline ---------- */
+    const p = clamp(ms / P1, 0, 1);
+    const eased = 1 - Math.pow(1 - p, 2.2);
+
+    /* the piece settles slightly on landing */
+    const settle = 1 - 0.018 * (1 - smoothstep(0, 260, ms));
+    const dx2 = px + pw * (1 - settle) / 2;
+    const dy2 = py + ph * (1 - settle) / 2;
+    const dw2 = pw * settle, dh2 = ph * settle;
+
+    const lv = state.batterLevels;
+    if (lv && lv.length) {
+      const k = Math.min(lv.length - 1, Math.floor(eased * (lv.length - 0.001)));
+      drawMaskedPiece(ctx, lv[k], dx2, dy2, dw2, dh2, clamp(0.55 + 0.45 * eased, 0, 1));
+    } else {
+      drawMaskedPiece(ctx, null, dx2, dy2, dw2, dh2, clamp(0.4 + 0.6 * eased, 0, 1));
+    }
+
+    /* wet sheen at the batter frontier */
+    ctx.save();
+    const sheen = ctx.createRadialGradient(W / 2, H / 2, Math.min(pw, ph) * 0.18, W / 2, H / 2, Math.min(pw, ph) * 0.62);
+    sheen.addColorStop(0, 'rgba(255,248,222,0)');
+    sheen.addColorStop(0.72, 'rgba(255,240,200,' + (0.16 * (1 - eased)) + ')');
+    sheen.addColorStop(1, 'rgba(255,236,186,0)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(px - 20, py - 20, pw + 40, ph + 40);
+    ctx.restore();
+
+  } else if (ms < P2) {
+    /* ---------- 2. lowered into the oil ---------- */
+    const p = clamp((ms - P1) / (P2 - P1), 0, 1);
+    const drop = p * p * (3 - 2 * p);
+
+    /* the piece sinks a little as the oil takes its weight */
+    ctx.drawImage(state.piece, px, py + pw * 0.022 * drop, pw, ph);
+
+    /* the oil surface climbs up over the piece, and keeps climbing a little past
+       it so the frying phase can start on an already-flooded frame */
+    const surface = H * 1.04 - drop * (H * 1.10 - (py - ph * 0.06));
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.72 * drop;
+    ctx.fillStyle = '#6d3c0e';
+    ctx.fillRect(0, surface, W, H - surface);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.18 * drop;
+    ctx.fillStyle = '#b96d16';
+    ctx.fillRect(0, surface, W, H - surface);
+    ctx.restore();
+
+    /* meniscus — the lit edge of the surface */
+    if (drop > 0.02) {
+      const wave = ctx.createLinearGradient(0, surface - 8, 0, surface + 12);
+      wave.addColorStop(0, 'rgba(255,214,140,0)');
+      wave.addColorStop(0.42, 'rgba(255,228,170,' + (0.46 * drop) + ')');
+      wave.addColorStop(1, 'rgba(255,190,96,0)');
+      ctx.save();
+      ctx.fillStyle = wave;
+      ctx.fillRect(0, surface - 8, W, 20);
+      ctx.restore();
+    }
+
+    /* ripple rings where the piece meets the oil */
+    const rp = clamp((p - 0.5) / 0.5, 0, 1);
+    if (rp > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 3; i++) {
+        const rr = pw * (0.20 + 0.52 * rp) * (1 + i * 0.24);
+        ctx.beginPath();
+        ctx.ellipse(W / 2, surface, rr, rr * 0.20, 0, 0, TAU);
+        ctx.strokeStyle = 'rgba(255,228,172,' + (0.34 * (1 - rp) / (1 + i * 0.8)) + ')';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+  } else if (ms < P3) {
+    /* ---------- 3. frying ---------- */
+    const im = (ms - P2) / (P3 - P2);
+
+    /* the piece bobs and shimmers */
+    const bobY = Math.sin(ms * 0.012) * 1.6;
+    const bobX = Math.sin(ms * 0.0087 + 1.7) * 1.1;
+
+    ctx.drawImage(state.piece, px + bobX, py + bobY, pw, ph);
+
+    /* oil: darken then glow */
+    const oilK = 1 - smoothstep(0.88, 1, im) * 0.35;
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.80 * oilK;
+    ctx.fillStyle = '#6d3c0e';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.20 * oilK;
+    ctx.fillStyle = '#b96d16';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    /* rising bubbles */
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const b of state.oilBubbles) {
+      const by = ((b.y - ms * b.vy * 0.001) % (H + 60) + H + 60) % (H + 60) - 30;
+      const bx = b.x + Math.sin(ms * 0.0035 + b.ph) * b.wob;
+      const rr = b.r * (0.8 + 0.4 * Math.sin(ms * 0.006 + b.ph));
+      ctx.beginPath();
+      ctx.arc(bx, by, rr, 0, TAU);
+      ctx.fillStyle = 'rgba(255,206,124,' + (0.10 + 0.12 * oilK) + ')';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(bx - rr * 0.28, by - rr * 0.28, rr * 0.34, 0, TAU);
+      ctx.fillStyle = 'rgba(255,244,214,' + (0.14 + 0.16 * oilK) + ')';
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* hot sizzle flecks around the rim */
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const fl = Math.floor(ms / 55);
+    const rf = rng(fl * 31 + 5);
+    for (let i = 0; i < 16; i++) {
+      const a2 = rf() * TAU;
+      const rr2 = 0.42 + rf() * 0.18;
+      const fx2 = W / 2 + Math.cos(a2) * pw * rr2;
+      const fy2 = H / 2 + Math.sin(a2) * ph * rr2;
+      const s2 = 1 + rf() * 2.6;
+      ctx.beginPath();
+      ctx.arc(fx2, fy2, s2, 0, TAU);
+      ctx.fillStyle = 'rgba(255,238,196,' + (0.18 + rf() * 0.3) * oilK + ')';
+      ctx.fill();
+    }
+    ctx.restore();
+
+  } else {
+    /* ---------- 4. lift ---------- */
+    const lf = clamp((ms - P3) / (COOK_MS - P3), 0, 1);
+    const drain = smoothstep(0, 0.75, lf);
+
+    ctx.drawImage(state.piece, px, py, pw, ph);
+
+    /* oil drains away */
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.80 * (1 - drain);
+    ctx.fillStyle = '#6d3c0e';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.20 * (1 - drain);
+    ctx.fillStyle = '#b96d16';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    /* crisp gloss sweep */
+    if (lf > 0.15) {
+      const sw = clamp((lf - 0.15) / 0.7, 0, 1);
+      const bandX = px - pw * 0.35 + sw * pw * 1.7;
+      ctx.save();
+      ctx.beginPath();
+      roundRectPath(ctx, px, py, pw, ph, Math.min(pw, ph) * 0.2);
+      ctx.clip();
+      const lg = ctx.createLinearGradient(bandX - 60, py, bandX + 60, py + ph);
+      lg.addColorStop(0, 'rgba(255,246,220,0)');
+      lg.addColorStop(0.5, 'rgba(255,246,220,' + (0.20 * (1 - sw * 0.5)) + ')');
+      lg.addColorStop(1, 'rgba(255,246,220,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(px, py, pw, ph);
+      ctx.restore();
+    }
+
+    /* drips falling off the bottom edge */
+    if (lf < 0.8) {
+      const rand = rng(911);
+      for (let i = 0; i < 5; i++) {
+        const dxs = px + pw * (0.2 + rand() * 0.6);
+        const delay = rand() * 0.35;
+        const lt = clamp((lf - delay) / 0.6, 0, 1);
+        if (lt <= 0) continue;
+        const dy2 = py + ph - 4 + lt * lt * ph * 0.42;
+        const rr = 1.6 + rand() * 2.6;
+        ctx.beginPath();
+        ctx.ellipse(dxs, dy2, rr * 0.72, rr, 0, 0, TAU);
+        ctx.fillStyle = 'rgba(184,112,26,' + (0.55 * (1 - lt)) + ')';
+        ctx.fill();
+      }
+    }
+  }
+
+  updateStatus(ms);
+}
+
+function updateStatus(ms) {
+  const phaseEl = document.getElementById('phaseName');
+  const timerEl = document.getElementById('timerText');
+  const secs = (ms / 1000).toFixed(1);
+  const total = (COOK_MS / 1000).toFixed(1);
+  let name = 'Batter';
+  if (ms >= T_FRY) name = 'Lift';
+  else if (ms >= T_DROP) name = 'Frying';
+  else if (ms >= T_FLOOD) name = 'Lowering';
+  phaseEl.textContent = state.done ? 'Plated' : name;
+  timerEl.textContent = state.done ? total + ' s / ' + total + ' s' : secs + ' s / ' + total + ' s';
+}
+
+/* ==========================================================================
+   8. Cook driver
+   ========================================================================== */
+let rafId = null;
+
+function startCook() {
+  if (!state.piece) return;
+  state.cooking = true;
+  state.done = false;
+  state.t0 = performance.now();
+
+  document.getElementById('orderPanel').classList.add('hide');
+  document.getElementById('stage').classList.remove('hide');
+  document.getElementById('receiptWrap').classList.add('hide');
+  document.getElementById('actions').classList.add('hide');
+
+  /* oil bubbles */
+  const rand = rng(31337);
+  state.oilBubbles = [];
+  for (let i = 0; i < 90; i++) {
+    state.oilBubbles.push({
+      x: rand() * state.plateW,
+      y: rand() * (state.plateH + 60),
+      r: 1 + rand() * 5,
+      vy: 40 + rand() * 120,
+      wob: 2 + rand() * 7,
+      ph: rand() * TAU
+    });
+  }
+
+  const loop = (now) => {
+    if (!state.cooking && state.done) return;
+    const ms = now - state.t0;
+    if (state.done) { renderCook(COOK_MS); rafId = null; return; }
+    renderCook(Math.min(ms, COOK_MS));
+    if (ms >= COOK_MS) { finishCook(); return; }
+    rafId = requestAnimationFrame(loop);
+  };
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
+}
+
+function skipCook() {
+  if (!state.cooking || state.done) return;
+  cancelAnimationFrame(rafId);
+  renderCook(COOK_MS);
+  finishCook();
+}
+
+function finishCook() {
+  if (state.done) return;
+  state.done = true;
+  state.cooking = false;
+  cancelAnimationFrame(rafId);
+  rafId = null;
+  renderCook(COOK_MS);
+
+  /* snapshot at display size for the wall */
+  const thumb = document.createElement('canvas');
+  thumb.width = 320; thumb.height = 320;
+  const tc = thumb.getContext('2d');
+  const s = Math.min(320 / state.plateW, 320 / state.plateH);
+  const tw = state.plateW * s, thh = state.plateH * s;
+  tc.fillStyle = PAPER; tc.fillRect(0, 0, 320, 320);
+  tc.drawImage(stageCanvas, (320 - tw) / 2, (320 - thh) / 2, tw, thh);
+
+  const cook = {
+    n: state.order,
+    subject: state.subject || 'UNNAMED',
+    thumb,
+    dims: { ...state.dims },
+    bytes: state.bytes,
+    immersion: (2.4 + (state.order * 37 % 60) / 100).toFixed(1)
+  };
+  state.history.push(cook);
+  state.order++;
+
+  renderReceipt(cook);
+  renderWall();
+  document.getElementById('receiptWrap').classList.remove('hide');
+  document.getElementById('actions').classList.remove('hide');
+  document.getElementById('orderTag').textContent = 'Order № ' + pad4(state.order);
+  updateStatus(COOK_MS);
+}
+
+/* ==========================================================================
+   9. Receipt
+   ========================================================================== */
+function receiptRows(cook) {
+  const kb = cook.bytes > 0 ? Math.round(cook.bytes / 1024) + ' KB' : '— KB';
+  return [
+    ['SUBJECT', cook.subject],
+    ['ORIGIN', cook.dims.w + ' × ' + cook.dims.h + ' · ' + kb],
+    ['BATTER', 'ALL-PURPOSE · 12% PROTEIN'],
+    ['OIL', '178°C'],
+    ['IMMERSION', cook.immersion + ' s'],
+    ['YIELD', '1 PIECE']
+  ];
+}
+
+function renderReceipt(cook) {
+  const el = document.getElementById('receipt');
+  const rows = receiptRows(cook)
+    .map(([k, v]) => `<div class="r-row"><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`)
+    .join('');
+  el.innerHTML =
+    `<div class="r-head"><span>Tenpura Everything</span><span>#${pad4(cook.n)}</span></div>` +
+    `<div class="r-rule"></div>` +
+    rows +
+    `<div class="r-rule dashed"></div>` +
+    `<div class="r-total">¥ 0.99</div>`;
+  document.getElementById('stamp').textContent = 'Served Hot';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ==========================================================================
+   10. Wall
+   ========================================================================== */
+function renderWall() {
+  const wall = document.getElementById('wall');
+  const grid = document.getElementById('wallGrid');
+  if (!state.history.length) { wall.classList.add('hide'); return; }
+  wall.classList.remove('hide');
+  grid.innerHTML = '';
+  state.history.forEach(cook => {
+    const item = document.createElement('div');
+    item.className = 'wall-item';
+    const img = document.createElement('img');
+    img.src = cook.thumb.toDataURL('image/png');
+    img.alt = cook.subject;
+    item.appendChild(img);
+    grid.appendChild(item);
+  });
+}
+
+/* ==========================================================================
+   11. Export
+   ========================================================================== */
+function exportCanvas(cook, withReceipt) {
+  const LONG = 1600;
+
+  /* rebuild the piece at export resolution */
+  const piece = buildPiece(state.srcImage, 1200);
+
+  let cw, ch;
+  if (withReceipt) { cw = LONG; ch = Math.round(LONG * 1.18); }
+  else {
+    const pad = Math.round(LONG * 0.07);
+    if (piece.width >= piece.height) { cw = LONG; ch = Math.round(LONG * 0.78); }
+    else { ch = LONG; cw = Math.round(LONG * 0.78); }
+    void pad;
+  }
+
+  const c = document.createElement('canvas');
+  c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d');
+
+  drawGround(ctx, cw, ch);
+
+  const plateH = withReceipt ? ch * 0.62 : ch;
+  const plateW = cw;
+  const ar = piece.width / piece.height;
+  let dw = plateW * 0.86, dh = dw / ar;
+  if (dh > plateH * 0.86) { dh = plateH * 0.86; dw = dh * ar; }
+  const dx = (plateW - dw) / 2;
+  const dy = (plateH - dh) / 2;
+  drawShadow(ctx, dx, dy, dw, dh);
+  ctx.drawImage(piece, dx, dy, dw, dh);
+
+  if (withReceipt) {
+    /* receipt block */
+    const rx = cw * 0.5 - 230;
+    const ry = plateH + 40;
+    const rw = 460;
+
+    ctx.save();
+    ctx.fillStyle = '#fbf7ee';
+    ctx.fillRect(rx, ry, rw, ch - ry - 120);
+    ctx.strokeStyle = 'rgba(26,24,17,0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rx + 0.5, ry + 0.5, rw, ch - ry - 120);
+
+    ctx.fillStyle = '#1a1811';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '700 20px "Courier New", monospace';
+    ctx.fillText('TENPURA EVERYTHING', rx + 34, ry + 52);
+    ctx.font = '700 20px "Courier New", monospace';
+    const num = '#' + pad4(cook.n);
+    ctx.fillText(num, rx + rw - 34 - ctx.measureText(num).width, ry + 52);
+
+    ctx.fillRect(rx + 34, ry + 70, rw - 68, 1.5);
+
+    ctx.font = '18px "Courier New", monospace';
+    let y = ry + 108;
+    receiptRows(cook).forEach(([k, v]) => {
+      ctx.fillStyle = '#847a64';
+      ctx.fillText(k, rx + 34, y);
+      ctx.fillStyle = '#1a1811';
+      ctx.fillText(String(v).toUpperCase(), rx + 180, y);
+      y += 32;
+    });
+
+    ctx.fillStyle = 'rgba(26,24,17,0.35)';
+    ctx.fillRect(rx + 34, y + 4, rw - 68, 1);
+    ctx.fillStyle = '#1a1811';
+    ctx.font = '700 26px "Courier New", monospace';
+    ctx.fillText('¥ 0.99', rx + rw - 34 - ctx.measureText('¥ 0.99').width, y + 46);
+    ctx.restore();
+  }
+
+  return c;
+}
+
+function downloadCanvas(c, filename) {
+  c.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }, 'image/png');
+}
+
+function doExport(withReceipt) {
+  const cook = state.history[state.history.length - 1];
+  if (!cook) return;
+  const btn = withReceipt ? document.getElementById('saveCardBtn') : document.getElementById('savePlateBtn');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Plating…';
+  setTimeout(() => {
+    try {
+      const c = exportCanvas(cook, withReceipt);
+      downloadCanvas(c, `tenpura_${pad4(cook.n)}_${withReceipt ? 'card' : 'plate'}.png`);
+    } catch (err) {
+      console.error(err);
+      showNotice('Plate failed.');
+    }
+    btn.disabled = false;
+    btn.textContent = label;
+  }, 40);
+}
+
+/* ==========================================================================
+   12. Intake
+   ========================================================================== */
+function showNotice(msg) {
+  const el = document.getElementById('notice');
+  el.textContent = msg;
+  el.classList.remove('hide');
+}
+function clearNotice() {
+  document.getElementById('notice').classList.add('hide');
+}
+
+function acceptImage(img, bytes) {
+  state.srcImage = img;
+  state.bytes = bytes || 0;
+  state.dims = { w: img.naturalWidth || img.width, h: img.naturalHeight || img.height };
+  state.subject = '';
+  clearNotice();
+
+  document.getElementById('dropZone').classList.add('hide');
+  document.getElementById('orderPanel').classList.remove('hide');
+  document.getElementById('thumbImg').src = img.src;
+  document.getElementById('thumbCap').textContent =
+    state.dims.w + ' × ' + state.dims.h + (bytes ? ' · ' + Math.round(bytes / 1024) + ' KB' : '');
+
+  const si = document.getElementById('subjectInput');
+  si.value = '';
+  si.focus();
+}
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    showNotice('Not an image.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => acceptImage(img, file.size);
+    img.onerror = () => showNotice('File failed.');
+    img.src = e.target.result;
+  };
+  reader.onerror = () => showNotice('File failed.');
+  reader.readAsDataURL(file);
+}
+
+/* built-in samples, drawn so they work with no network */
+function sampleCanvas(kind) {
+  const W = 900, H = 700;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const rand = rng(kind.length * 977 + 13);
+
+  if (kind === 'landscape') {
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#9fc0d8');
+    sky.addColorStop(0.55, '#dfe6e2');
+    sky.addColorStop(1, '#f0e3c4');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#8fa3a8';
+    g.beginPath(); g.moveTo(0, 430);
+    for (let x = 0; x <= W; x += 30) g.lineTo(x, 430 - Math.sin(x * 0.006) * 60 - 40);
+    g.lineTo(W, H); g.lineTo(0, H); g.fill();
+    g.fillStyle = '#5f6f6a';
+    g.beginPath(); g.moveTo(0, 500);
+    for (let x = 0; x <= W; x += 24) g.lineTo(x, 500 - Math.sin(x * 0.011 + 2) * 40);
+    g.lineTo(W, H); g.lineTo(0, H); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    g.beginPath(); g.arc(690, 150, 52, 0, TAU); g.fill();
+  } else if (kind === 'food') {
+    g.fillStyle = '#e3d6bd'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#cdbb9b';
+    g.beginPath(); g.arc(W / 2, H / 2, 260, 0, TAU); g.fill();
+    g.fillStyle = '#f7f2e4';
+    g.beginPath(); g.arc(W / 2, H / 2, 216, 0, TAU); g.fill();
+    for (let i = 0; i < 9; i++) {
+      const a = i / 9 * TAU + 0.3;
+      g.beginPath();
+      g.arc(W / 2 + Math.cos(a) * 110, H / 2 + Math.sin(a) * 110, 46 + rand() * 16, 0, TAU);
+      g.fillStyle = ['#c9713a', '#d9a23f', '#8fa14e', '#b8503a'][i % 4];
+      g.fill();
+    }
+    g.fillStyle = '#d9703d';
+    g.beginPath(); g.arc(W / 2, H / 2, 78, 0, TAU); g.fill();
+  } else if (kind === 'text') {
+    g.fillStyle = '#f8f6ef'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#2a2a2a';
+    g.fillRect(60, 50, 380, 26);
+    let y = 110;
+    for (let i = 0; i < 17; i++) {
+      const wid = 780 - (i % 5 === 4 ? 300 : 0) - rand() * 90;
+      g.fillStyle = 'rgba(40,40,40,' + (0.82 - (i % 3) * 0.12) + ')';
+      g.fillRect(60, y, wid, 13);
+      y += 30;
+      if (i === 6) y += 18;
+    }
+    g.strokeStyle = '#c0392b'; g.lineWidth = 3;
+    g.strokeRect(52, 250, 470, 88);
+  } else {
+    /* building */
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#b9c6cf'); sky.addColorStop(1, '#e8e2d4');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#6c7276';
+    g.fillRect(120, 150, 200, 550);
+    g.fillStyle = '#565c60';
+    g.fillRect(340, 260, 160, 440);
+    g.fillStyle = '#7b8286';
+    g.fillRect(520, 100, 230, 600);
+    g.fillStyle = '#3f4448';
+    g.fillRect(560, 60, 150, 60);
+    g.fillStyle = 'rgba(240,232,200,0.75)';
+    for (let r = 0; r < 9; r++) {
+      for (let cc = 0; cc < 5; cc++) {
+        g.fillRect(150 + cc * 34, 190 + r * 56, 20, 32);
+        g.fillRect(370 + cc * 26, 300 + r * 44, 15, 26);
+        g.fillRect(548 + cc * 40, 150 + r * 62, 24, 38);
+      }
+    }
+  }
+  return c;
+}
+
+function loadSample(kind) {
+  const c = sampleCanvas(kind);
+  const img = new Image();
+  img.onload = () => acceptImage(img, 0);
+  img.src = c.toDataURL('image/png');
+}
+
+/* ==========================================================================
+   13. Wiring
+   ========================================================================== */
+function newOrder() {
+  state.piece = null;
+  state.batterLevels = [];
+  state.cooking = false;
+  state.done = false;
+  cancelAnimationFrame(rafId);
+  rafId = null;
+
+  document.getElementById('stage').classList.add('hide');
+  document.getElementById('receiptWrap').classList.add('hide');
+  document.getElementById('actions').classList.add('hide');
+  document.getElementById('orderPanel').classList.add('hide');
+  document.getElementById('dropZone').classList.remove('hide');
+  document.getElementById('subjectInput').value = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('orderTag').textContent = 'Order № ' + pad4(state.order);
+  clearNotice();
+}
+
+function boot() {
+  stageCanvas = document.getElementById('stageCanvas');
+  setupStageCtx();
+
+  const dz = document.getElementById('dropZone');
+  const fi = document.getElementById('fileInput');
+
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  fi.addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); });
+
+  document.addEventListener('paste', e => {
+    if (!e.clipboardData) return;
+    for (const item of e.clipboardData.items) {
+      if (item.type.indexOf('image') === 0) {
+        const f = item.getAsFile();
+        if (f) { loadFile(f); break; }
+      }
+    }
+  });
+
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => e.preventDefault());
+
+  document.getElementById('cookBtn').addEventListener('click', () => {
+    if (!state.srcImage || !state.srcImage.naturalWidth) {
+      showNotice('No subject.');
+      return;
+    }
+    const subj = document.getElementById('subjectInput').value.trim().toUpperCase();
+    state.subject = subj || 'UNNAMED';
+
+    /* build the piece once, at display resolution */
+    const longSide = Math.round(clamp(Math.max(state.plateW, state.plateH) * DPR, 480, 820));
+    try {
+      state.piece = buildPiece(state.srcImage, longSide);
+      state.batterLevels = buildBatterLevels(state.piece);
+    } catch (err) {
+      console.error(err);
+      showNotice('Batter failed.');
+      return;
+    }
+    layoutPiece();
+    startCook();
+  });
+
+  document.getElementById('subjectInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('cookBtn').click();
+  });
+
+  stageCanvas.addEventListener('click', skipCook);
+  stageCanvas.addEventListener('touchstart', e => { e.preventDefault(); skipCook(); }, { passive: false });
+
+  document.getElementById('savePlateBtn').addEventListener('click', () => doExport(false));
+  document.getElementById('saveCardBtn').addEventListener('click', () => doExport(true));
+  document.getElementById('newOrderBtn').addEventListener('click', newOrder);
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => loadSample(chip.dataset.sample));
+  });
+
+  let rt;
+  window.addEventListener('resize', () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => {
+      if (state.done && state.piece) return; // keep the served plate as it is
+      setupStageCtx();
+      if (state.piece) layoutPiece();
+    }, 200);
+  });
+
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+</script>
+</body>
+</html>
